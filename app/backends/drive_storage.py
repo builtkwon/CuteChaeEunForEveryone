@@ -4,17 +4,17 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
 from app.backends.base import CloudStorage
-from config import DRIVE_FOLDER_NAME
 
 
 class GoogleDriveStorage(CloudStorage):
     """Google Drive 기반 CloudStorage 구현체."""
 
-    def __init__(self, creds: Credentials):
+    def __init__(self, creds: Credentials, folder_name: str) -> None:
         self._service = build("drive", "v3", credentials=creds)
+        self._folder_name = folder_name
 
     def upload(self, file_bytes: bytes, filename: str) -> str:
-        folder_id = self._get_or_create_folder(DRIVE_FOLDER_NAME)
+        folder_id = self._get_or_create_folder(self._folder_name)
 
         uploaded = self._service.files().create(
             body={"name": filename, "parents": [folder_id]},

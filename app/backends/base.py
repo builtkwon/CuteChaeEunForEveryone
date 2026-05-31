@@ -1,4 +1,13 @@
 from abc import ABC, abstractmethod
+from typing import TypedDict
+
+
+class ResultData(TypedDict):
+    filename: str
+    data: bytes
+    drive_url: str
+    file_size: str
+    qr_position: str
 
 
 class CloudStorage(ABC):
@@ -20,7 +29,7 @@ class ResultStore(ABC):
     """
 
     @abstractmethod
-    def save(self, file_id: str, data: dict) -> None: ...
+    def save(self, file_id: str, data: ResultData) -> None: ...
 
     @abstractmethod
-    def get(self, file_id: str) -> dict | None: ...
+    def get(self, file_id: str) -> ResultData | None: ...

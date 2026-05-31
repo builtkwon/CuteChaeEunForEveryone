@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>결과 확인 — QR 사진 프레임</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+    body { font-family: 'Noto Sans KR', sans-serif; }
+
+    /* Native share button shimmer on first render */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .fade-in { animation: fadeIn 0.35s ease both; }
+
+    /* Pinch-zoom safe container */
+    #result-img-wrap { touch-action: pinch-zoom; }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-white shadow-sm px-5 py-4 flex items-center gap-3">
+    <a href="/" class="text-slate-400 hover:text-slate-700 transition" aria-label="돌아가기">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+      </svg>
+    </a>
+    <h1 class="text-lg font-bold text-slate-800">합성 완료</h1>
+  </header>
+
+  <!-- Main -->
+  <main class="flex-1 flex flex-col items-center px-4 py-6 gap-5 max-w-lg mx-auto w-full">
+
+    <!-- Success badge -->
+    <div class="fade-in flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium rounded-full px-4 py-1.5">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+      </svg>
+      QR 합성이 완료됐어요
+    </div>
+
+    <!-- Result image card -->
+    <div class="fade-in w-full bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden" style="animation-delay:.05s">
+      <div id="result-img-wrap" class="bg-slate-900 flex items-center justify-center min-h-[240px]">
+        {% if result_image_url %}
+        <img id="result-img"
+             src="{{ result_image_url }}"
+             alt="QR 합성 결과"
+             class="w-full max-h-[65vmax] object-contain"
+             loading="lazy" />
+        {% else %}
+        <div class="flex flex-col items-center gap-2 text-slate-500 py-16">
+          <svg class="w-10 h-10 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3 21h18M3.75 3h16.5M3.75 3A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21h16.5a2.25 2.25 0 0 0 2.25-2.25V5.25A2.25 2.25 0 0 0 20.25 3H3.75Z" />
+          </svg>
+          <p class="text-sm">이미지를 불러올 수 없습니다</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="fade-in w-full flex flex-col gap-3" style="animation-delay:.1s">
+
+      <!-- Download -->
+      {% if download_url %}
+      <a href="{{ download_url }}"
+         download="{{ filename | default('qr_photo.jpg') }}"
+         class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 transition shadow-sm shadow-indigo-200">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+        </svg>
+        사진 저장하기
+      </a>
+      {% endif %}
+
+      <!-- Native share (JS reveals if supported) -->
+      <button id="share-btn"
+              class="hidden items-center justify-center gap-2 w-full py-3.5 rounded-xl font-bold text-indigo-600 border-2 border-indigo-200 hover:bg-indigo-50 active:scale-95 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
+        </svg>
+        공유하기
+      </button>
+
+      <!-- Google Drive link -->
+      {% if drive_url %}
+      <a href="{{ drive_url }}" target="_blank" rel="noopener"
+         class="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 active:scale-95 transition">
+        <svg class="w-4 h-4" viewBox="0 0 87.3 78" fill="currentColor">
+          <path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L26.8 53H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+          <path d="M43.65 25L30.6 2.35C29.25 3.15 28.1 4.25 27.3 5.65L1.2 48.5A9 9 0 0 0 0 53h26.8z" fill="#00ac47"/>
+          <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25A9.07 9.07 0 0 0 87.3 53H60.5l5.55 10.45z" fill="#ea4335"/>
+          <path d="M43.65 25L56.7 2.35A9.03 9.03 0 0 0 53.15 1L34.15 1c-1.35 0-2.65.35-3.55 1.35z" fill="#00832d"/>
+          <path d="M60.5 53H26.8L13.75 76.8c1.35.8 2.85 1.2 4.35 1.2h50.8c1.5 0 3-.4 4.35-1.2z" fill="#2684fc"/>
+          <path d="M73.4 26.5L60.3 5.65C59.5 4.25 58.35 3.15 57 2.35L43.95 25 60.5 53h26.75c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+        </svg>
+        Google Drive에서 보기
+      </a>
+      {% endif %}
+
+      <!-- Back -->
+      <a href="/"
+         class="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 active:scale-95 transition">
+        다른 사진 합성하기 →
+      </a>
+    </div>
+
+    <!-- Metadata chip row -->
+    {% if filename or file_size %}
+    <div class="fade-in flex flex-wrap gap-2 justify-center" style="animation-delay:.15s">
+      {% if filename %}
+      <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-500 text-xs">📄 {{ filename }}</span>
+      {% endif %}
+      {% if file_size %}
+      <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-500 text-xs">💾 {{ file_size }}</span>
+      {% endif %}
+      {% if qr_position %}
+      <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-500 text-xs">📍 {{ qr_position }}</span>
+      {% endif %}
+    </div>
+    {% endif %}
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="text-center text-xs text-slate-400 py-5">
+    Google Drive에 저장됐어요
+  </footer>
+
+<script>
+  // Reveal native share button if Web Share API is available
+  (async () => {
+    const shareBtn = document.getElementById('share-btn');
+    const imgUrl   = {{ result_image_url | tojson if result_image_url else 'null' }};
+    const filename = {{ filename | tojson if filename else '"qr_photo.jpg"' }};
+
+    if (navigator.share && imgUrl) {
+      shareBtn.classList.remove('hidden');
+      shareBtn.classList.add('flex');
+
+      shareBtn.addEventListener('click', async () => {
+        try {
+          // Try sharing the actual file blob
+          const resp = await fetch(imgUrl);
+          const blob = await resp.blob();
+          const file = new File([blob], filename, { type: blob.type });
+
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: 'QR 합성 사진' });
+          } else {
+            await navigator.share({ url: imgUrl, title: 'QR 합성 사진' });
+          }
+        } catch (err) {
+          if (err.name !== 'AbortError') console.error('Share failed', err);
+        }
+      });
+    }
+  })();
+</script>
+</body>
+</html>

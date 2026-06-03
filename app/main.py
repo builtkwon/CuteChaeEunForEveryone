@@ -3,8 +3,7 @@ import io
 from fastapi import FastAPI, Form, Request, UploadFile, File, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from starlette.middleware.sessions import SessionMiddleware
 
 from config import DRIVE_FOLDER_NAME, SECRET_KEY
@@ -18,24 +17,26 @@ app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, max_age=86400)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-templates = Jinja2Templates(env=Environment(
+# Starlette Jinja2 래퍼 대신 Jinja2 직접 사용 — 버전 호환성 문제 완전 차단
+_jinja = Environment(
     loader=FileSystemLoader("app/templates"),
-    cache_size=0,  # 버전 간 캐시 키 호환성 문제 방지
-))
+    autoescape=select_autoescape(["html"]),
+)
+
+def _render(template_name: str, **ctx) -> HTMLResponse:
+    return HTMLResponse(_jinja.get_template(template_name).render(**ctx))
+
 
 _store   = InMemoryResultStore()
-_results = ResultRepository(_store)   # 읽기 전용 — 저장소 직접 접근 금지
+_results = ResultRepository(_store)
 
 ALLOWED_TYPES   = {"image/jpeg", "image/png", "image/webp", "image/heic"}
 VALID_POSITIONS = {"top-left", "top-right", "bottom-left", "bottom-right"}
 
 
 def _make_service(creds_dict: dict) -> PhotoService:
-    """요청마다 인증된 크리덴셜로 PhotoService를 생성합니다.
-    CloudStorage 구현체 교체는 여기 한 줄만 바꾸면 됩니다.
-    """
     creds   = dict_to_creds(creds_dict)
-    storage = GoogleDriveStorage(creds, DRIVE_FOLDER_NAME)  # folder_name 주입
+    storage = GoogleDriveStorage(creds, DRIVE_FOLDER_NAME)
     return PhotoService(storage, _store)
 
 
@@ -43,10 +44,7 @@ def _make_service(creds_dict: dict) -> PhotoService:
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "user": request.session.get("user"),
-    })
+    return _render("index.html", user=request.session.get("user"))
 
 
 @app.get("/result/{file_id}", response_class=HTMLResponse)
@@ -56,17 +54,16 @@ async def result_page(request: Request, file_id: str):
         return RedirectResponse("/")
 
     base_url = str(request.base_url).rstrip("/")
-    return templates.TemplateResponse("result.html", {
-        "request":          request,
-        "user":             request.session.get("user"),
-        "file_id":          file_id,
-        "filename":         _results.get_download_filename(file_id),
-        "drive_url":        data["drive_url"],
-        "result_image_url": f"{base_url}/preview/{file_id}",
-        "download_url":     f"{base_url}/download/{file_id}",
-        "file_size":        data["file_size"],
-        "qr_position":      data["qr_position"],
-    })
+    return _render("result.html",
+        user             = request.session.get("user"),
+        file_id          = file_id,
+        filename         = _results.get_download_filename(file_id),
+        drive_url        = data["drive_url"],
+        result_image_url = f"{base_url}/preview/{file_id}",
+        download_url     = f"{base_url}/download/{file_id}",
+        file_size        = data["file_size"],
+        qr_position      = data["qr_position"],
+    )
 
 
 # ── 인증 ────────────────────────────────────────────────

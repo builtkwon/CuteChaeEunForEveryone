@@ -4,6 +4,7 @@ from fastapi import FastAPI, Form, Request, UploadFile, File, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from jinja2 import Environment, FileSystemLoader
 from starlette.middleware.sessions import SessionMiddleware
 
 from config import DRIVE_FOLDER_NAME, SECRET_KEY
@@ -17,7 +18,10 @@ app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, max_age=86400)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-templates = Jinja2Templates(directory="app/templates")
+templates = Jinja2Templates(env=Environment(
+    loader=FileSystemLoader("app/templates"),
+    cache_size=0,  # 버전 간 캐시 키 호환성 문제 방지
+))
 
 _store   = InMemoryResultStore()
 _results = ResultRepository(_store)   # 읽기 전용 — 저장소 직접 접근 금지

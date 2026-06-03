@@ -1,6 +1,6 @@
 import io
 
-from fastapi import FastAPI, Form, Request, UploadFile, File, HTTPException
+from fastapi import FastAPI, Form, Request, UploadFile, File, HTTPException  # Request는 upload에서 사용
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -50,18 +50,17 @@ async def index():
 
 
 @app.get("/result/{file_id}", response_class=HTMLResponse)
-async def result_page(request: Request, file_id: str):
+async def result_page(file_id: str):
     data = _results.get(file_id)
     if not data:
         return RedirectResponse("/")
 
-    base_url = str(request.base_url).rstrip("/")
     return _render("result.html",
         file_id          = file_id,
         filename         = _results.get_download_filename(file_id),
         drive_url        = data["drive_url"],
-        result_image_url = f"{base_url}/preview/{file_id}",
-        download_url     = f"{base_url}/download/{file_id}",
+        result_image_url = f"/preview/{file_id}",
+        download_url     = f"/download/{file_id}",
         file_size        = data["file_size"],
         qr_position      = data["qr_position"],
     )

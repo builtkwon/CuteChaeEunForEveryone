@@ -4,20 +4,19 @@ from fastapi import FastAPI, Form, Request, UploadFile, File, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from starlette.middleware.sessions import SessionMiddleware
 
-from config import DRIVE_FOLDER_NAME, SECRET_KEY
-from app.auth import get_auth_url, exchange_code, get_user_info, creds_to_dict, dict_to_creds
-from app.backends.drive_storage import GoogleDriveStorage
+from config import (
+    R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY,
+    R2_BUCKET_NAME, R2_PUBLIC_URL,
+)
+from app.backends.r2_storage import CloudflareR2Storage
 from app.backends.memory_store import InMemoryResultStore
 from app.services.photo_service import PhotoService
 from app.services.result_repository import ResultRepository
 
 app = FastAPI()
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, max_age=86400)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-# Starlette Jinja2 래퍼 대신 Jinja2 직접 사용 — 버전 호환성 문제 완전 차단
 _jinja = Environment(
     loader=FileSystemLoader("app/templates"),
     autoescape=select_autoescape(["html"]),
@@ -27,24 +26,27 @@ def _render(template_name: str, **ctx) -> HTMLResponse:
     return HTMLResponse(_jinja.get_template(template_name).render(**ctx))
 
 
+# 앱 시작 시 한 번만 생성 — 인증 불필요
+_storage = CloudflareR2Storage(
+    account_id        = R2_ACCOUNT_ID,
+    access_key_id     = R2_ACCESS_KEY_ID,
+    secret_access_key = R2_SECRET_ACCESS_KEY,
+    bucket_name       = R2_BUCKET_NAME,
+    public_url        = R2_PUBLIC_URL,
+)
 _store   = InMemoryResultStore()
 _results = ResultRepository(_store)
+_service = PhotoService(_storage, _store)
 
 ALLOWED_TYPES   = {"image/jpeg", "image/png", "image/webp", "image/heic"}
 VALID_POSITIONS = {"top-left", "top-right", "bottom-left", "bottom-right"}
 
 
-def _make_service(creds_dict: dict) -> PhotoService:
-    creds   = dict_to_creds(creds_dict)
-    storage = GoogleDriveStorage(creds, DRIVE_FOLDER_NAME)
-    return PhotoService(storage, _store)
-
-
 # ── 페이지 ──────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    return _render("index.html", user=request.session.get("user"))
+async def index():
+    return _render("index.html")
 
 
 @app.get("/result/{file_id}", response_class=HTMLResponse)
@@ -55,7 +57,6 @@ async def result_page(request: Request, file_id: str):
 
     base_url = str(request.base_url).rstrip("/")
     return _render("result.html",
-        user             = request.session.get("user"),
         file_id          = file_id,
         filename         = _results.get_download_filename(file_id),
         drive_url        = data["drive_url"],
@@ -66,39 +67,6 @@ async def result_page(request: Request, file_id: str):
     )
 
 
-# ── 인증 ────────────────────────────────────────────────
-
-@app.get("/auth/login")
-async def auth_login(request: Request):
-    auth_url, state = get_auth_url()
-    request.session["oauth_state"] = state
-    return RedirectResponse(auth_url)
-
-
-@app.get("/auth/callback")
-async def auth_callback(request: Request, code: str, state: str):
-    if state != request.session.get("oauth_state"):
-        raise HTTPException(status_code=400, detail="Invalid OAuth state")
-
-    creds = exchange_code(code)
-    user  = get_user_info(creds)
-
-    request.session["credentials"] = creds_to_dict(creds)
-    request.session["user"] = {
-        "name":    user.get("name"),
-        "email":   user.get("email"),
-        "picture": user.get("picture"),
-    }
-    return RedirectResponse("/")
-
-
-@app.get("/auth/logout")
-@app.get("/logout")
-async def auth_logout(request: Request):
-    request.session.clear()
-    return RedirectResponse("/")
-
-
 # ── 업로드 & 파일 서빙 ───────────────────────────────────
 
 @app.post("/upload")
@@ -107,10 +75,6 @@ async def upload(
     photo:       UploadFile = File(...),
     qr_position: str        = Form("bottom-right"),
 ):
-    creds_dict = request.session.get("credentials")
-    if not creds_dict:
-        return RedirectResponse("/", status_code=303)
-
     if photo.content_type not in ALLOWED_TYPES:
         raise HTTPException(status_code=400, detail="지원하지 않는 파일 형식입니다.")
 
@@ -120,7 +84,7 @@ async def upload(
     file_bytes = await photo.read()
     filename   = photo.filename or "photo.jpg"
 
-    file_id = _make_service(creds_dict).process(file_bytes, filename, qr_position)
+    file_id = _service.process(file_bytes, filename, qr_position)
     return RedirectResponse(f"/result/{file_id}", status_code=303)
 
 

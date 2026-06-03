@@ -20,22 +20,6 @@
       <span class="text-2xl">🖼️</span>
       <h1 class="text-lg font-bold text-slate-800">QR 사진 프레임</h1>
     </div>
-    {% if user %}
-    <div class="flex items-center gap-2">
-      {% if user.picture %}
-      <img src="{{ user.picture }}" alt="프로필" class="w-8 h-8 rounded-full border border-slate-200" />
-      {% endif %}
-      <a href="/logout" class="text-xs text-slate-500 hover:text-slate-800 transition">로그아웃</a>
-    </div>
-    {% else %}
-    <a href="/auth/login"
-       class="flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800 transition">
-      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12.545 10.239v3.821h5.445c-.712 2.315-2.647 3.972-5.445 3.972a6.033 6.033 0 1 1 0-12.064c1.498 0 2.866.549 3.921 1.453l2.814-2.814A9.969 9.969 0 0 0 12.545 2C7.021 2 2.543 6.477 2.543 12s4.478 10 10.002 10c8.396 0 10.249-7.85 9.426-11.748l-9.426-.013z"/>
-      </svg>
-      Google 로그인
-    </a>
-    {% endif %}
   </header>
 
   <!-- Main -->
@@ -146,7 +130,7 @@
 
   <!-- Footer -->
   <footer class="text-center text-xs text-slate-400 py-5">
-    사진은 Google Drive에 안전하게 저장됩니다
+    사진은 안전하게 저장됩니다
   </footer>
 
 <script>

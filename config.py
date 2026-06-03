@@ -3,9 +3,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-GOOGLE_CLIENT_ID     = os.environ["GOOGLE_CLIENT_ID"]
-GOOGLE_CLIENT_SECRET = os.environ["GOOGLE_CLIENT_SECRET"]
-SECRET_KEY           = os.environ.get("SECRET_KEY", "change-this-in-production")
-BASE_URL             = os.environ.get("BASE_URL", "http://localhost:8000")
+SECRET_KEY = os.environ.get("SECRET_KEY", "change-this-in-production")
 
-DRIVE_FOLDER_NAME = "PhotoFrame"
+R2_ACCOUNT_ID        = os.environ["R2_ACCOUNT_ID"]
+R2_ACCESS_KEY_ID     = os.environ["R2_ACCESS_KEY_ID"]
+R2_SECRET_ACCESS_KEY = os.environ["R2_SECRET_ACCESS_KEY"]
+R2_BUCKET_NAME       = os.environ["R2_BUCKET_NAME"]
+R2_PUBLIC_URL        = os.environ["R2_PUBLIC_URL"]  # 예: https://pub-xxxx.r2.dev
+
+DRIVE_FOLDER_NAME = "PhotoFrame"  # 하위 호환용, 추후 제거 가능

@@ -1,6 +1,6 @@
 import io
 import qrcode
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 try:
     from pillow_heif import register_heif_opener
@@ -69,9 +69,14 @@ def _make_mosaic_qr(photo_region: Image.Image, url: str, size: int) -> Image.Ima
     qr.add_data(url)
     qr.make(fit=True)
 
-    qr_mask = qr.make_image(fill_color="black", back_color="white") \
-                .convert("L") \
-                .resize((size, size), Image.NEAREST)
+    qr_raw = qr.make_image(fill_color="black", back_color="white").convert("L")
+
+    # 라이브러리가 강제로 추가하는 흰 여백을 검정 픽셀 경계 기준으로 크롭
+    bbox = ImageOps.invert(qr_raw).getbbox()
+    if bbox:
+        qr_raw = qr_raw.crop(bbox)
+
+    qr_mask = qr_raw.resize((size, size), Image.NEAREST)
 
     region = photo_region.resize((size, size), Image.LANCZOS).convert("RGB")
 

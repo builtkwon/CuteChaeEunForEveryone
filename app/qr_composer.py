@@ -9,7 +9,8 @@ except ImportError:
     pass
 
 _SIZE_RATIO    = 0.18
-_MARGIN        = 20               # 좌상단 여백 (px)
+_MARGIN        = 20
+_DEFAULT_POS   = "top-left"
 _MAX_DIMENSION = 4096
 _TARGET_BYTES  = 10 * 1024 * 1024
 _QUALITY_STEPS = [90, 80, 70, 60]
@@ -87,12 +88,19 @@ def _make_mosaic_qr(photo_region: Image.Image, url: str, size: int) -> Image.Ima
     return Image.composite(light, dark, qr_mask)
 
 
-def compose(image_bytes: bytes, download_url: str) -> bytes:
-    """QR 코드를 사진 좌상단에 모자이크 방식으로 합성합니다."""
+def compose(image_bytes: bytes, download_url: str, qr_position: str = _DEFAULT_POS) -> bytes:
+    """QR 코드를 지정 위치에 모자이크 방식으로 합성합니다."""
     photo   = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     pw, ph  = photo.size
     qr_size = int(min(pw, ph) * _SIZE_RATIO)
-    x0, y0  = _MARGIN, _MARGIN
+
+    positions = {
+        "top-left":     (_MARGIN, _MARGIN),
+        "top-right":    (pw - qr_size - _MARGIN, _MARGIN),
+        "bottom-left":  (_MARGIN, ph - qr_size - _MARGIN),
+        "bottom-right": (pw - qr_size - _MARGIN, ph - qr_size - _MARGIN),
+    }
+    x0, y0 = positions.get(qr_position, positions[_DEFAULT_POS])
 
     photo_region = photo.crop((x0, y0, x0 + qr_size, y0 + qr_size))
     qr_overlay   = _make_mosaic_qr(photo_region, download_url, qr_size)

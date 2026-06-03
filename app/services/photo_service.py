@@ -11,18 +11,18 @@ class PhotoService:
         self._storage = storage
         self._store   = store
 
-    def process(self, file_bytes: bytes, filename: str) -> str:
-        """사진을 처리하고 결과를 조회할 수 있는 file_id를 반환합니다."""
+    def process(self, file_bytes: bytes, filename: str, qr_position: str) -> str:
         file_bytes   = compress_if_needed(file_bytes)
         download_url = self._storage.upload(file_bytes, filename)
-        result_bytes = compose(file_bytes, download_url)
+        result_bytes = compose(file_bytes, download_url, qr_position)
 
         file_id = str(uuid.uuid4())
         data: ResultData = {
-            "filename":  filename,
-            "data":      result_bytes,
-            "drive_url": download_url,
-            "file_size": f"{len(result_bytes) / 1024:.0f} KB",
+            "filename":    filename,
+            "data":        result_bytes,
+            "drive_url":   download_url,
+            "file_size":   f"{len(result_bytes) / 1024:.0f} KB",
+            "qr_position": qr_position,
         }
         self._store.save(file_id, data)
         return file_id

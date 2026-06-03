@@ -1,7 +1,7 @@
 import io
 from urllib.parse import quote
 
-from fastapi import FastAPI, Request, UploadFile, File, HTTPException
+from fastapi import FastAPI, Form, Request, UploadFile, File, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -54,7 +54,8 @@ _store   = InMemoryResultStore()
 _results = ResultRepository(_store)
 _service = PhotoService(_storage, _store)
 
-ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic"}
+ALLOWED_TYPES   = {"image/jpeg", "image/png", "image/webp", "image/heic"}
+VALID_POSITIONS = {"top-left", "top-right", "bottom-left", "bottom-right"}
 
 
 # ── 페이지 ──────────────────────────────────────────────
@@ -77,15 +78,22 @@ async def result_page(file_id: str):
         result_image_url = f"/preview/{file_id}",
         download_url     = f"/download/{file_id}",
         file_size        = data["file_size"],
+        qr_position      = data["qr_position"],
     )
 
 
 # ── 업로드 & 파일 서빙 ───────────────────────────────────
 
 @app.post("/upload")
-async def upload(photo: UploadFile = File(...)):
+async def upload(
+    photo:       UploadFile = File(...),
+    qr_position: str        = Form("top-left"),
+):
     if photo.content_type not in ALLOWED_TYPES:
         raise HTTPException(status_code=400, detail="지원하지 않는 파일 형식입니다.")
+
+    if qr_position not in VALID_POSITIONS:
+        qr_position = "top-left"
 
     file_bytes = await photo.read()
 
@@ -98,7 +106,7 @@ async def upload(photo: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=str(e))
 
     filename = photo.filename or "photo.jpg"
-    file_id  = _service.process(file_bytes, filename)
+    file_id  = _service.process(file_bytes, filename, qr_position)
     return RedirectResponse(f"/result/{file_id}", status_code=303)
 
 

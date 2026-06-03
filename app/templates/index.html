@@ -69,6 +69,28 @@
                accept="image/*" capture="environment"
                class="hidden" onchange="handleFileSelect(this)" />
 
+        <!-- QR position selector -->
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-2">QR 위치</label>
+          <div class="grid grid-cols-2 gap-2" id="qr-position-group">
+            {% set positions = [
+              ("top-left",     "↖ 왼쪽 상단"),
+              ("top-right",    "↗ 오른쪽 상단"),
+              ("bottom-left",  "↙ 왼쪽 하단"),
+              ("bottom-right", "↘ 오른쪽 하단"),
+            ] %}
+            {% for val, label in positions %}
+            <label class="qr-pos-btn flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 cursor-pointer transition
+                          has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-700 has-[:checked]:font-medium
+                          hover:border-slate-300">
+              <input type="radio" name="qr_position" value="{{ val }}" class="hidden"
+                     {% if val == "top-left" %}checked{% endif %} />
+              {{ label }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
         <!-- Submit -->
         <button id="submit-btn" type="submit"
                 class="w-full py-3.5 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed"

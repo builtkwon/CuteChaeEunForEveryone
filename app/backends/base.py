@@ -3,11 +3,10 @@ from typing import TypedDict
 
 
 class ResultData(TypedDict):
-    filename: str
-    data: bytes
+    filename:  str
+    data:      bytes
     drive_url: str
     file_size: str
-    qr_position: str
 
 
 class CloudStorage(ABC):

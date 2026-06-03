@@ -1,7 +1,7 @@
 import io
 from urllib.parse import quote
 
-from fastapi import FastAPI, Form, Request, UploadFile, File, HTTPException
+from fastapi import FastAPI, Request, UploadFile, File, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -54,8 +54,7 @@ _store   = InMemoryResultStore()
 _results = ResultRepository(_store)
 _service = PhotoService(_storage, _store)
 
-ALLOWED_TYPES   = {"image/jpeg", "image/png", "image/webp", "image/heic"}
-VALID_POSITIONS = {"top-left", "top-right", "bottom-left", "bottom-right"}
+ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic"}
 
 
 # ── 페이지 ──────────────────────────────────────────────
@@ -78,38 +77,28 @@ async def result_page(file_id: str):
         result_image_url = f"/preview/{file_id}",
         download_url     = f"/download/{file_id}",
         file_size        = data["file_size"],
-        qr_position      = data["qr_position"],
     )
 
 
 # ── 업로드 & 파일 서빙 ───────────────────────────────────
 
 @app.post("/upload")
-async def upload(
-    photo:       UploadFile = File(...),
-    qr_position: str        = Form("bottom-right"),
-):
-    # 1. MIME 타입 검사 (헤더 기반 1차)
+async def upload(photo: UploadFile = File(...)):
     if photo.content_type not in ALLOWED_TYPES:
         raise HTTPException(status_code=400, detail="지원하지 않는 파일 형식입니다.")
 
-    if qr_position not in VALID_POSITIONS:
-        qr_position = "bottom-right"
-
     file_bytes = await photo.read()
 
-    # 2. 파일 크기 제한
     if len(file_bytes) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail="파일 크기는 최대 20MB까지 허용됩니다.")
+        raise HTTPException(status_code=413, detail="파일 크기는 최대 50MB까지 허용됩니다.")
 
-    # 3. 실제 이미지 유효성 검증 (Pillow 기반 2차 — 악성 파일 차단)
     try:
         validate_image(file_bytes)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     filename = photo.filename or "photo.jpg"
-    file_id  = _service.process(file_bytes, filename, qr_position)
+    file_id  = _service.process(file_bytes, filename)
     return RedirectResponse(f"/result/{file_id}", status_code=303)
 
 

@@ -8,9 +8,12 @@ try:
 except ImportError:
     pass
 
-_SIZE_RATIO = 0.15
-_MARGIN     = 20
-_PADDING    = 10
+_SIZE_RATIO    = 0.15
+_MARGIN        = 20
+_PADDING       = 10
+_MAX_DIMENSION = 4096              # 이 픽셀 초과 시 축소
+_TARGET_BYTES  = 10 * 1024 * 1024  # 압축 목표 용량 (10MB)
+_QUALITY_STEPS = [90, 80, 70, 60]  # 단계적 품질 감소
 
 
 def validate_image(image_bytes: bytes) -> None:
@@ -24,6 +27,36 @@ def validate_image(image_bytes: bytes) -> None:
         img.verify()
     except (UnidentifiedImageError, Exception) as e:
         raise ValueError(f"유효하지 않은 이미지 파일입니다: {e}") from e
+
+
+def compress_if_needed(image_bytes: bytes) -> bytes:
+    """이미지가 목표 용량을 초과하면 자동 압축합니다.
+
+    1단계: 해상도가 _MAX_DIMENSION 초과 시 비율 유지하며 축소
+    2단계: JPEG 품질을 단계적으로 낮춰 _TARGET_BYTES 이하로 조정
+    목표 용량 이하면 원본 그대로 반환합니다.
+    """
+    if len(image_bytes) <= _TARGET_BYTES:
+        return image_bytes
+
+    img = Image.open(io.BytesIO(image_bytes))
+    w, h = img.size
+
+    # 1단계: 해상도 축소
+    if max(w, h) > _MAX_DIMENSION:
+        ratio = _MAX_DIMENSION / max(w, h)
+        img   = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
+
+    # 2단계: 품질 단계 감소
+    result = image_bytes
+    for quality in _QUALITY_STEPS:
+        out = io.BytesIO()
+        img.convert("RGB").save(out, format="JPEG", quality=quality)
+        result = out.getvalue()
+        if len(result) <= _TARGET_BYTES:
+            break
+
+    return result
 
 
 def _make_qr(url: str, size: int) -> Image.Image:

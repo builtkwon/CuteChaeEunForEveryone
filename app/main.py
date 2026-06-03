@@ -17,7 +17,7 @@ from app.services.photo_service import PhotoService
 from app.services.result_repository import ResultRepository
 from app.qr_composer import validate_image
 
-MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB (압축 전 원본 기준, ProRAW 등 고려)
 
 app = FastAPI()
 

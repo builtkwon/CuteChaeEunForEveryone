@@ -1,7 +1,7 @@
 import uuid
 
 from app.backends.base import CloudStorage, ResultData, ResultStore
-from app.qr_composer import compose
+from app.qr_composer import compose, compress_if_needed
 
 
 class PhotoService:
@@ -17,6 +17,7 @@ class PhotoService:
 
     def process(self, file_bytes: bytes, filename: str, qr_position: str) -> str:
         """사진을 처리하고 결과를 조회할 수 있는 file_id를 반환합니다."""
+        file_bytes   = compress_if_needed(file_bytes)  # 10MB 초과 시 자동 압축
         download_url = self._storage.upload(file_bytes, filename)
         result_bytes = compose(file_bytes, download_url, qr_position)
 

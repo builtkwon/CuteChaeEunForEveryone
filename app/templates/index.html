@@ -72,22 +72,23 @@
         <!-- QR position selector -->
         <div>
           <label class="block text-xs font-medium text-slate-500 mb-2">QR 위치</label>
-          <div class="grid grid-cols-2 gap-2" id="qr-position-group">
-            {% set positions = [
-              ("top-left",     "↖ 왼쪽 상단"),
-              ("top-right",    "↗ 오른쪽 상단"),
-              ("bottom-left",  "↙ 왼쪽 하단"),
-              ("bottom-right", "↘ 오른쪽 하단"),
-            ] %}
-            {% for val, label in positions %}
-            <label class="qr-pos-btn flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 cursor-pointer transition
-                          has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-700 has-[:checked]:font-medium
-                          hover:border-slate-300">
-              <input type="radio" name="qr_position" value="{{ val }}" class="hidden"
-                     {% if val == "top-left" %}checked{% endif %} />
-              {{ label }}
+          <div class="grid grid-cols-2 gap-2">
+            <label class="qr-pos-btn flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 cursor-pointer transition hover:border-slate-300">
+              <input type="radio" name="qr_position" value="top-left" class="hidden" checked />
+              ↖ 왼쪽 상단
             </label>
-            {% endfor %}
+            <label class="qr-pos-btn flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 cursor-pointer transition hover:border-slate-300">
+              <input type="radio" name="qr_position" value="top-right" class="hidden" />
+              ↗ 오른쪽 상단
+            </label>
+            <label class="qr-pos-btn flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 cursor-pointer transition hover:border-slate-300">
+              <input type="radio" name="qr_position" value="bottom-left" class="hidden" />
+              ↙ 왼쪽 하단
+            </label>
+            <label class="qr-pos-btn flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 cursor-pointer transition hover:border-slate-300">
+              <input type="radio" name="qr_position" value="bottom-right" class="hidden" />
+              ↘ 오른쪽 하단
+            </label>
           </div>
         </div>
 
@@ -169,6 +170,17 @@
       fileInput.files = dt.files;
       showPreview(file);
     }
+  });
+
+  // QR 위치 선택 버튼 강조
+  document.querySelectorAll('input[name="qr_position"]').forEach(radio => {
+    if (radio.checked) radio.closest('label').classList.add('border-indigo-500', 'bg-indigo-50', 'text-indigo-700', 'font-medium');
+    radio.addEventListener('change', () => {
+      document.querySelectorAll('input[name="qr_position"]').forEach(r => {
+        r.closest('label').classList.remove('border-indigo-500', 'bg-indigo-50', 'text-indigo-700', 'font-medium');
+      });
+      radio.closest('label').classList.add('border-indigo-500', 'bg-indigo-50', 'text-indigo-700', 'font-medium');
+    });
   });
 
   // Loading state on submit

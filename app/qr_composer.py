@@ -1,16 +1,29 @@
 import io
 import qrcode
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 try:
     from pillow_heif import register_heif_opener
     register_heif_opener()
 except ImportError:
-    pass  # HEIC 미지원 환경에서도 동작
+    pass
 
-_SIZE_RATIO = 0.15   # 사진 짧은 변 대비 QR 크기 비율
-_MARGIN     = 20     # 가장자리 여백 (px)
-_PADDING    = 10     # QR 흰 배경 내부 여백 (px)
+_SIZE_RATIO = 0.15
+_MARGIN     = 20
+_PADDING    = 10
+
+
+def validate_image(image_bytes: bytes) -> None:
+    """실제 이미지 파일인지 Pillow로 검증합니다.
+
+    Content-Type 헤더 위조로 악성 파일이 통과하는 것을 차단합니다.
+    유효하지 않으면 ValueError를 발생시킵니다.
+    """
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        img.verify()
+    except (UnidentifiedImageError, Exception) as e:
+        raise ValueError(f"유효하지 않은 이미지 파일입니다: {e}") from e
 
 
 def _make_qr(url: str, size: int) -> Image.Image:

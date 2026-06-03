@@ -1,9 +1,11 @@
 import io
+from urllib.parse import quote
 
-from fastapi import FastAPI, Form, Request, UploadFile, File, HTTPException  # Request는 upload에서 사용
+from fastapi import FastAPI, Form, Request, UploadFile, File, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from config import (
     R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY,
@@ -13,8 +15,23 @@ from app.backends.r2_storage import CloudflareR2Storage
 from app.backends.memory_store import InMemoryResultStore
 from app.services.photo_service import PhotoService
 from app.services.result_repository import ResultRepository
+from app.qr_composer import validate_image
+
+MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
 
 app = FastAPI()
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"]        = "DENY"
+        response.headers["Referrer-Policy"]        = "strict-origin-when-cross-origin"
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 _jinja = Environment(
@@ -26,7 +43,6 @@ def _render(template_name: str, **ctx) -> HTMLResponse:
     return HTMLResponse(_jinja.get_template(template_name).render(**ctx))
 
 
-# 앱 시작 시 한 번만 생성 — 인증 불필요
 _storage = CloudflareR2Storage(
     account_id        = R2_ACCOUNT_ID,
     access_key_id     = R2_ACCESS_KEY_ID,
@@ -70,10 +86,10 @@ async def result_page(file_id: str):
 
 @app.post("/upload")
 async def upload(
-    request:     Request,
     photo:       UploadFile = File(...),
     qr_position: str        = Form("bottom-right"),
 ):
+    # 1. MIME 타입 검사 (헤더 기반 1차)
     if photo.content_type not in ALLOWED_TYPES:
         raise HTTPException(status_code=400, detail="지원하지 않는 파일 형식입니다.")
 
@@ -81,9 +97,19 @@ async def upload(
         qr_position = "bottom-right"
 
     file_bytes = await photo.read()
-    filename   = photo.filename or "photo.jpg"
 
-    file_id = _service.process(file_bytes, filename, qr_position)
+    # 2. 파일 크기 제한
+    if len(file_bytes) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="파일 크기는 최대 20MB까지 허용됩니다.")
+
+    # 3. 실제 이미지 유효성 검증 (Pillow 기반 2차 — 악성 파일 차단)
+    try:
+        validate_image(file_bytes)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    filename = photo.filename or "photo.jpg"
+    file_id  = _service.process(file_bytes, filename, qr_position)
     return RedirectResponse(f"/result/{file_id}", status_code=303)
 
 
@@ -102,8 +128,10 @@ async def download(file_id: str):
     if not data or not filename:
         raise HTTPException(status_code=404)
 
+    # RFC 5987 인코딩으로 파일명 특수문자 안전 처리
+    encoded = quote(filename, safe="")
     return StreamingResponse(
         io.BytesIO(data["data"]),
         media_type="image/jpeg",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded}"},
     )

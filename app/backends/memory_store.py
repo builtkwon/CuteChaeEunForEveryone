@@ -1,4 +1,7 @@
+import time
 from app.backends.base import ResultData, ResultStore
+
+_TTL_SECONDS = 3600  # 1시간 후 자동 만료
 
 
 class InMemoryResultStore(ResultStore):
@@ -9,10 +12,24 @@ class InMemoryResultStore(ResultStore):
     """
 
     def __init__(self) -> None:
-        self._data: dict[str, ResultData] = {}
+        self._data: dict[str, tuple[ResultData, float]] = {}
 
     def save(self, file_id: str, data: ResultData) -> None:
-        self._data[file_id] = data
+        self._purge_expired()
+        self._data[file_id] = (data, time.monotonic())
 
     def get(self, file_id: str) -> ResultData | None:
-        return self._data.get(file_id)
+        entry = self._data.get(file_id)
+        if not entry:
+            return None
+        data, saved_at = entry
+        if time.monotonic() - saved_at > _TTL_SECONDS:
+            del self._data[file_id]
+            return None
+        return data
+
+    def _purge_expired(self) -> None:
+        now = time.monotonic()
+        expired = [k for k, (_, t) in self._data.items() if now - t > _TTL_SECONDS]
+        for k in expired:
+            del self._data[k]

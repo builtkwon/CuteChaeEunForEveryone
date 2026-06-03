@@ -8,7 +8,7 @@ try:
 except ImportError:
     pass
 
-_SIZE_RATIO    = 0.15
+_SIZE_RATIO    = 0.18
 _MARGIN        = 20               # 좌상단 여백 (px)
 _MAX_DIMENSION = 4096
 _TARGET_BYTES  = 10 * 1024 * 1024
